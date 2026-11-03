@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Consumer Intelligence Lab — Local History Connector",
+  "version": "1.1.0",
+  "description": "Sends user-approved Chrome history records to the Consumer Intelligence Lab dashboard locally.",
+  "optional_permissions": ["history"],
+  "icons": { "16": "icon16.png", "48": "icon48.png", "128": "icon128.png" },
+  "background": { "service_worker": "service-worker.js", "type": "module" },
+  "content_scripts": [{
+    "matches": [
+      "https://gmarie30.github.io/Consumer-Profile-Dashboard/*",
+      "http://localhost:5173/*",
+      "http://127.0.0.1:5173/*",
+      "http://localhost:5174/*",
+      "http://127.0.0.1:5174/*"
+    ],
+    "js": ["content.js"],
+    "run_at": "document_start"
+  }],
+  "action": { "default_title": "Consumer Intelligence Lab connection", "default_popup": "popup.html", "default_icon": { "16": "icon16.png", "48": "icon48.png" } }
+}
