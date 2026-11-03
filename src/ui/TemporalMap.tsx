@@ -1,0 +1,19 @@
+import {useMemo,useState} from 'react';
+import * as d3 from 'd3';
+import {RecordItem} from '../model';
+const colors=['#71e1bc','#b0a0ff','#77b8ec','#f0c77a','#ef9caa','#83c8b4','#b3bcdd','#85929e'];
+export function TemporalMap({records,onSelect}:{records:RecordItem[];onSelect:(r:RecordItem)=>void}){
+ const [cell,setCell]=useState<[number,number]|null>(null);
+ const dated=useMemo(()=>records.filter(r=>r.kind!=='product'&&r.date),[records]);
+ const bins=useMemo(()=>Array.from({length:7},(_,day)=>Array.from({length:24},(_,hour)=>dated.filter(r=>r.date!.getDay()===day&&r.date!.getHours()===hour))),[dated]);
+ const max=Math.max(1,...bins.flat().map(b=>b.length));
+ const categories=[...new Set(dated.map(r=>r.category))].sort();
+ const months=new Map<string,Record<string,number>>();for(const r of dated){const key=`${r.date!.getFullYear()}-${String(r.date!.getMonth()+1).padStart(2,'0')}`;const m=months.get(key)??{};m[r.category]=(m[r.category]??0)+1;months.set(key,m)}
+ const ordered=[...months].sort((a,b)=>a[0].localeCompare(b[0])).slice(-12);
+ const series=d3.stack<Record<string,number>>().keys(categories).value((d,key)=>d[key]??0)(ordered.map(([,v])=>v));
+ const highest=Math.max(1,...ordered.map(([,v])=>Object.values(v).reduce((a,b)=>a+b,0)));
+ const x=d3.scaleLinear().domain([0,Math.max(1,ordered.length-1)]).range([20,860]);const y=d3.scaleLinear().domain([0,highest]).range([210,15]);
+ const area=d3.area<[number,number]>().x((_,i)=>x(i)).y0(d=>y(d[0]||0)).y1(d=>y(d[1]||0)).curve(d3.curveMonotoneX);
+ const evidence=cell?bins[cell[0]][cell[1]]:[];
+ return <><section className="panel temporal-map"><span className="panel-label">LOCAL TIME · CLICK FOR EVIDENCE</span><h3>Weekly activity fingerprint</h3>{dated.length?<><div className="hour-axis"><span/>{Array.from({length:24},(_,h)=><span key={h}>{h%3===0?String(h).padStart(2,'0'):''}</span>)}</div><div className="heatmap">{bins.map((hours,day)=><div className="heat-row" key={day}><span>{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][day]}</span>{hours.map((rows,h)=><button key={h} aria-label={`${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][day]} ${h}:00, ${rows.length} records`} title={`${rows.length} behavioral records`} onClick={()=>setCell([day,h])} style={{background:rows.length?`color-mix(in srgb, var(--mint) ${20+80*rows.length/max}%, var(--surface))`:'var(--surface-3)'}}/>)}</div>)}</div>{cell&&<div className="heat-evidence"><b>{evidence.length} supporting records</b>{evidence.slice(0,12).map(r=><button className="evidence-link" key={r.id} onClick={()=>onSelect(r)}>{r.title}</button>)}{!evidence.length&&<p>No records in this cell. Missing data does not prove inactivity.</p>}</div>}</>:<p>INSUFFICIENT DATA: add dated behavioral records.</p>}</section><section className="panel temporal-map"><span className="panel-label">CHANGES IN RECORDED INTERESTS</span><h3>Interest flow over time</h3>{ordered.length>1?<><svg className="flow-svg" viewBox="0 0 880 255" role="img" aria-label="Stacked monthly activity by locally inferred category">{series.map((s,i)=><path key={s.key} d={area(s as [number,number][])??''} fill={colors[i%colors.length]} opacity=".65"><title>{s.key}: {dated.filter(r=>r.category===s.key).length} records in the provided time range</title></path>)}{ordered.map(([m],i)=><text x={x(i)} y="242" textAnchor={i===0?'start':i===ordered.length-1?'end':'middle'} key={m} fill="var(--text-secondary)" fontSize="12">{m}</text>)}</svg><div className="flow-legend">{categories.map((c,i)=><span key={c}><i style={{background:colors[i%colors.length]}}/>{c}</span>)}</div><p>Monthly record counts in up to 12 observed months. Category labels are keyword inferences. Missing months appear as gaps in the source coverage and are not evidence of a change in preference.</p></>:<p>INSUFFICIENT DATA: at least two distinct months are needed for a trend.</p>}</section></>;
+}
