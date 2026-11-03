@@ -1,0 +1,11 @@
+import fs from 'node:fs';
+import {spawnSync} from 'node:child_process';
+const root=new URL('../',import.meta.url);
+const files=['manifest.json','service-worker.js','content.js','popup.html','popup.js','popup.css','icon16.png','icon48.png','icon128.png','PRIVACY.md','INSTALL.md','STORE_SUBMISSION.md'];
+for(const f of files)if(!fs.existsSync(new URL('extension/'+f,root)))throw new Error('Missing extension asset: '+f);
+fs.mkdirSync(new URL('public',root),{recursive:true});
+const destination=new URL('public/consumer-lab-extension.zip',root);
+if(fs.existsSync(destination))fs.unlinkSync(destination);
+const result=spawnSync('/usr/bin/zip',['-q',destination.pathname,...files],{cwd:new URL('extension/',root),stdio:'inherit'});
+if(result.status!==0)throw new Error('Extension packaging failed. Install the system zip utility.');
+console.log('Packaged connector from explicit public-code allowlist.');

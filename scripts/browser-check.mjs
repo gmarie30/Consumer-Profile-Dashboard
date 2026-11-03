@@ -1,0 +1,26 @@
+import {chromium} from 'playwright';
+import fs from 'node:fs/promises';
+const output=process.env.QA_DIR||'test-results';await fs.mkdir(output,{recursive:true});
+const browser=await chromium.launch({...(process.env.CHROME_CHANNEL?{channel:process.env.CHROME_CHANNEL}:{}),headless:true});
+const context=await browser.newContext({viewport:{width:1440,height:1000}});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(String(e)));const requests=[];page.on('request',r=>{if(!r.url().startsWith('http://127.0.0.1:5174/'))requests.push(r.url())});
+await page.goto('http://127.0.0.1:5174/Consumer-Profile-Dashboard/');
+await page.getByText('Your activity,').waitFor();
+await page.screenshot({path:output+'/01-empty.png',fullPage:true});
+await page.evaluate(()=>window.postMessage({type:'CIL_HISTORY_RESULT',records:[{title:'Spoofed camera',url:'https://example.test'}]},location.origin));
+if(!await page.getByText('Your activity,').isVisible())throw new Error('Unsolicited extension data was accepted');
+const now=Date.now();const visits=Array.from({length:50},(_,i)=>({title:i%3?'Camera review comparison':'Garden furniture research',url:`https://site${i%7}.example.test/product/${i%8}`,date:new Date(now-i*864e5/2).toISOString()}));
+await page.locator('#file-input').setInputFiles({name:'development-only-fixture.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(visits))});
+await page.getByText('RECORDS ANALYZED',{exact:true}).waitFor();
+const nav=page.locator('.sidebar');
+const pages=['Overview','Interest universe','Digital footprint','Shopping style','Segments','Product discovery','Recommendations','AI vs reality','Privacy & sources'];
+for(const name of pages){await nav.getByRole('button',{name,exact:true}).click();await page.waitForTimeout(name==='Interest universe'?1500:100);await page.screenshot({path:output+'/'+name.replaceAll(' ','-')+'.png',fullPage:true});if(await page.locator('body').evaluate(el=>el.scrollWidth>innerWidth))throw new Error('Desktop overflow: '+name)}
+await nav.getByRole('button',{name:'Interest universe',exact:true}).click();await page.locator('.graph-node').first().click();await page.getByText('How this link was created').waitFor();await page.getByPlaceholder('Search network').fill('no-such-term');await page.getByText('No usable records match this network search.').waitFor();await page.getByPlaceholder('Search network').fill('');
+await nav.getByRole('button',{name:'Product discovery',exact:true}).click();await page.getByLabel('Product name',{exact:true}).fill('Camera development fixture');await page.getByLabel('Source URL',{exact:true}).fill('https://example.test/camera');await page.getByLabel('Price, optional',{exact:true}).fill('99');await page.getByRole('button',{name:'Add real product'}).click();await page.getByText('Product added locally.',{exact:false}).waitFor();
+await nav.getByRole('button',{name:'Recommendations',exact:true}).click();await page.getByRole('heading',{name:'Camera development fixture'}).waitFor();
+await nav.getByRole('button',{name:'AI vs reality',exact:true}).click();await page.getByRole('button',{name:'Inaccurate',exact:true}).first().click();
+await page.getByTitle('Toggle color mode').click();await page.screenshot({path:output+'/light-mode.png',fullPage:true});
+await page.setViewportSize({width:390,height:844});await page.locator('.mobile-menu').click();await nav.getByRole('button',{name:'Interest universe',exact:true}).click();await page.waitForTimeout(500);await page.screenshot({path:output+'/mobile-network.png',fullPage:true});if(await page.locator('body').evaluate(el=>el.scrollWidth>innerWidth))throw new Error('Mobile overflow');
+await page.locator('.mobile-menu').click();await nav.getByRole('button',{name:'Privacy & sources',exact:true}).click();page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Delete all session data'}).click();await page.getByText('No personal sources connected.').waitFor();
+await page.reload();await page.getByText('Your activity,').waitFor();
+await fs.writeFile(output+'/browser-results.json',JSON.stringify({status:'passed',testedPages:pages,errors,externalRequests:requests,personalRecordsAnalyzed:0,note:'Synthetic development fixtures only in an isolated temporary browser context. No extension installed.'},null,2));
+await browser.close();if(errors.length||requests.length)throw new Error(JSON.stringify({errors,requests}));console.log('Browser checks passed: nine pages, graph evidence/search, product capture, recommendations, feedback, light mode, mobile, deletion, reload, unsolicited-message rejection, no external requests.');
