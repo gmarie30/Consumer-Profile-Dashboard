@@ -52,7 +52,7 @@ npm run dev -- --port 5174 --strictPort
 
 Build packages the connector from an explicit code-only allowlist into `public/consumer-lab-extension.zip` and then creates `dist/`. System `zip` is required (available on macOS and the Ubuntu Actions image). The Vite base is `/Consumer-Profile-Dashboard/`.
 
-The Pages workflow tests and builds on pushes to main, then deploys `dist/`. In repository Settings → Pages, choose GitHub Actions. Private-repository Pages availability depends on the GitHub plan; do not change repository visibility without reviewing that choice. Never put personal records in source, static assets, commits, workflow artifacts or screenshots. Use explicit code allowlists when staging; ignore rules are only a secondary safeguard.
+The Pages workflow tests and builds on pushes to main. It deploys `dist/` automatically for public repositories. For private repositories on an eligible plan, enable Pages and manually run the workflow with Deploy checked, or set the repository variable ENABLE_PAGES_DEPLOY=true. Private repositories without that option still receive successful build/test checks; deployment is skipped. In repository Settings → Pages, choose GitHub Actions. Private-repository Pages availability depends on the GitHub plan; do not change repository visibility without reviewing that choice. Never put personal records in source, static assets, commits, workflow artifacts or screenshots. Use explicit code allowlists when staging; ignore rules are only a secondary safeguard.
 
 Expected Pages address once deployment is successful: `https://gmarie30.github.io/Consumer-Profile-Dashboard/`. This is a configured target, not a claim that deployment is live.
 
